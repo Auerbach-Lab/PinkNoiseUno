@@ -6,13 +6,19 @@
 
 #include <Arduino.h>
 #include "firtables.h"    // 12 tap FIR filter using 2 lookups on last 12 random bits
+#include <debounce.h>
 
 // define the OCR2A timer output pin, depends on which board - only support ATmega328 and ATmega1280/2560
 #if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-#  define output_pin 10
+#  define OUTPUT_PIN 10
 #else
-#  define output_pin 11
+#  define OUTPUT_PIN 11
 #endif
+
+// On the Uno, the output pin is 11, but the high-frequency components of
+// the signal bleed onto 10 and 12 so avoid using these.
+#define SEQUENCE_BUTTON_PIN 9
+#define TEST_BUTTON_PIN 8
 
 volatile byte outsampl = 0x80;  // cache last sample for ISR
 volatile byte phase = 0;  // oscillates between 0 <-> 1 for each interrupt
@@ -81,14 +87,51 @@ ISR (TIMER2_OVF_vect) {
   phase = 1 - phase;
 }
 
+static void sequenceHandler(uint8_t btnId, uint8_t btnState) {
+  if (btnState == BTN_PRESSED) {
+    Serial.println("Pressed sequence button");
+  } else {
+    // btnState == BTN_OPEN.
+    Serial.println("Released sequence button");
+  }
+}
+
+static void testHandler(uint8_t btnId, uint8_t btnState) {
+  if (btnState == BTN_PRESSED) {
+    Serial.println("Testing...");
+    analogWrite(OUTPUT_PIN, 128); //set duty cycle to 50%
+  } else {
+    // btnState == BTN_OPEN
+    Serial.println("Test stop");
+    analogWrite(OUTPUT_PIN, 0); //set duty cycle to 0%
+  }
+}
+
+// Define button with a unique id (0) and handler function.
+// (The ids are so one handler function can tell different buttons apart if necessary.)
+static Button seqButton(0, sequenceHandler);
+static Button testButton(1, testHandler);
+
+static void pollButtons() {
+  // update() will call buttonHandler() if PIN transitions to a new state and stays there
+  // for multiple reads over 25+ ms.
+  seqButton.update(digitalRead(SEQUENCE_BUTTON_PIN));
+  testButton.update(digitalRead(TEST_BUTTON_PIN));
+}
+
 void setup() {
+  Serial.begin(115200);
+  pinMode(SEQUENCE_BUTTON_PIN, INPUT_PULLUP);
+  pinMode(TEST_BUTTON_PIN, INPUT_PULLUP);
+
   build_revtab();
-  analogWrite(output_pin, 255);  // enable the output pin and its timer, set to 50%
+  //analogWrite(OUTPUT_PIN, 128);  // enable the output pin and its timer, set to 50%
   TCCR2A = 0xB3;  // configure as fast 8-bit PWM (mode 011, clock prescale = 1)
   TCCR2B = 0x01;
-  TIMSK2 = 0x01;   // timer2 overflow interrupt enabled every 256 cycles (62.5 kHz for a 16MHz ATmega) because 16MHz / 8 bit register / prescaler of only 1 = 256
+  TIMSK2 = 0x01;  // timer2 overflow interrupt enabled every 256 cycles (62.5 kHz for a 16MHz ATmega) because 16MHz / 8 bit register / prescaler of only 1 = 256
 }
 
 void loop() { // nothing here for ongoing pink noise, all driven by ISR
-
+  pollButtons();
+  delay(10);
 }
