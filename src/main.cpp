@@ -10,15 +10,16 @@
 
 // define the OCR2A timer output pin, depends on which board - only support ATmega328 and ATmega1280/2560
 #if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-#  define OUTPUT_PIN 10
+#  define AUDIO_OUTPUT_PIN 10
 #else
-#  define OUTPUT_PIN 11
+#  define AUDIO_OUTPUT_PIN 11
 #endif
 
 // On the Uno, the output pin is 11, but the high-frequency components of
 // the signal bleed onto 10 and 12 so avoid using these.
 #define SEQUENCE_BUTTON_PIN 9
 #define TEST_BUTTON_PIN 8
+#define VTT_OUTPUT_PIN 7
 
 volatile byte outsampl = 0x80;  // cache last sample for ISR
 volatile byte phase = 0;  // oscillates between 0 <-> 1 for each interrupt
@@ -99,11 +100,13 @@ static void sequenceHandler(uint8_t btnId, uint8_t btnState) {
 static void testHandler(uint8_t btnId, uint8_t btnState) {
   if (btnState == BTN_PRESSED) {
     Serial.println("Testing...");
-    analogWrite(OUTPUT_PIN, 128); //set duty cycle to 50%
+    analogWrite(AUDIO_OUTPUT_PIN, 128); //set duty cycle to 50%
+    digitalWrite(VTT_OUTPUT_PIN, HIGH);
   } else {
     // btnState == BTN_OPEN
     Serial.println("Test stop");
-    analogWrite(OUTPUT_PIN, 0); //set duty cycle to 0%
+    analogWrite(AUDIO_OUTPUT_PIN, 0); //set duty cycle to 0%
+    digitalWrite(VTT_OUTPUT_PIN, LOW);
   }
 }
 
@@ -123,9 +126,10 @@ void setup() {
   Serial.begin(115200);
   pinMode(SEQUENCE_BUTTON_PIN, INPUT_PULLUP);
   pinMode(TEST_BUTTON_PIN, INPUT_PULLUP);
+  pinMode(VTT_OUTPUT_PIN, OUTPUT);
 
   build_revtab();
-  //analogWrite(OUTPUT_PIN, 128);  // enable the output pin and its timer, set to 50%
+  //analogWrite(AUDIO_OUTPUT_PIN, 128);  // enable the output pin and its timer, set to 50%
   TCCR2A = 0xB3;  // configure as fast 8-bit PWM (mode 011, clock prescale = 1)
   TCCR2B = 0x01;
   TIMSK2 = 0x01;  // timer2 overflow interrupt enabled every 256 cycles (62.5 kHz for a 16MHz ATmega) because 16MHz / 8 bit register / prescaler of only 1 = 256
