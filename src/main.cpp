@@ -42,10 +42,6 @@ void build_revtab() {
   }
 }
 
-void seed_stenzel (long seed) {
-  lfsr += seed;
-}
-
 int stenzel_pink_sample () {
   int bit = lfsr < 0 ? 0xFFF : 0x000;  // step the RNG, keeping latest bit as a mask in variable 'bit'
   lfsr += lfsr;
