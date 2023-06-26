@@ -52,6 +52,21 @@ static void sequenceHandler(uint8_t btnId, uint8_t btnState) {
   }
 }
 
+// define the OCR2A timer output pin, depends on which board - only support ATmega328 and ATmega1280/2560
+    #if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
+    #  define AUDIO_OUTPUT_PIN 10
+    #else
+    #  define AUDIO_OUTPUT_PIN 11
+    #endif
+
+// On the Uno, the relevant timer pin for audio output pin is 11, but the
+// high-frequency components of the signal bleed onto 10 and 12. Avoid them.
+#define SEQUENCE_BUTTON_PIN 9
+#define TEST_BUTTON_PIN 8
+#define TTL_OUTPUT_PIN 7
+#define SOUND_LED_PIN 6
+#define TRANSISTOR_PIN 5
+
 static void playSound() {
   Serial.println("Sound playing");
   analogWrite(AUDIO_OUTPUT_PIN, 128); //set duty cycle to 50%
@@ -97,14 +112,6 @@ static void testHandler(uint8_t btnId, uint8_t btnState) {
   }
 }
 
-// On the Uno, the relevant timer pin for audio output pin is 11, but the
-// high-frequency components of the signal bleed onto 10 and 12. Avoid them.
-#define SEQUENCE_BUTTON_PIN 9
-#define TEST_BUTTON_PIN 8
-#define TTL_OUTPUT_PIN 7
-#define SOUND_LED_PIN 6
-#define TRANSISTOR_PIN 5
-
 // Define button with a unique id (0) and handler function.
 // (The ids are so one handler function can tell different buttons apart if necessary.)
 static Button seqButton(0, sequenceHandler);
@@ -122,12 +129,6 @@ Arduino pink noise generation adapted from Mark Tillotson's adaptation of Stenze
 Works for Uno/Pro Mini/Mega, using pin 11 or 10 depending on board (the one driven by timer2 output A)
 Noncommercial use only.
 */
-    // define the OCR2A timer output pin, depends on which board - only support ATmega328 and ATmega1280/2560
-    #if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-    #  define AUDIO_OUTPUT_PIN 10
-    #else
-    #  define AUDIO_OUTPUT_PIN 11
-    #endif
     volatile byte outsampl = 0x80;  // cache last sample for ISR
     volatile byte phase = 0;  // oscillates between 0 <-> 1 for each interrupt
     volatile int error = 0;   // trick to reduce quantization noise
