@@ -19,7 +19,7 @@
 // the signal bleed onto 10 and 12 so avoid using these.
 #define SEQUENCE_BUTTON_PIN 9
 #define TEST_BUTTON_PIN 8
-#define VTT_OUTPUT_PIN 7
+#define TTL_OUTPUT_PIN 7
 
 // EDIT THESE VALUES TO ADJUST SEQUENCE TIMING
 #define OFFSET 1000           // ms between steps in sequence
@@ -149,12 +149,12 @@ static void testHandler(uint8_t btnId, uint8_t btnState) {
   if (btnState == BTN_PRESSED) {
     Serial.println("Testing...");
     analogWrite(AUDIO_OUTPUT_PIN, 128); //set duty cycle to 50%
-    digitalWrite(VTT_OUTPUT_PIN, HIGH);
+    digitalWrite(TTL_OUTPUT_PIN, HIGH);
   } else {
     // btnState == BTN_OPEN
     Serial.println("Test stop");
     analogWrite(AUDIO_OUTPUT_PIN, 0); //set duty cycle to 0%
-    digitalWrite(VTT_OUTPUT_PIN, LOW);
+    digitalWrite(TTL_OUTPUT_PIN, LOW);
   }
 }
 
@@ -174,7 +174,7 @@ void setup() {
   Serial.begin(115200);
   pinMode(SEQUENCE_BUTTON_PIN, INPUT_PULLUP);
   pinMode(TEST_BUTTON_PIN, INPUT_PULLUP);
-  pinMode(VTT_OUTPUT_PIN, OUTPUT);
+  pinMode(TTL_OUTPUT_PIN, OUTPUT);
 
   build_revtab();
   //analogWrite(AUDIO_OUTPUT_PIN, 128);  // enable the output pin and its timer, set to 50%
@@ -190,13 +190,13 @@ void loop() { // nothing here for ongoing pink noise, all driven by ISR
     if(!sendingTTL && imageStart[i] && (currentMillis > imageStart[i])) {
       sendingTTL = true;
       imageStart[i] = 0;
-      digitalWrite(VTT_OUTPUT_PIN, HIGH);
+      digitalWrite(TTL_OUTPUT_PIN, HIGH);
       Serial.println("Start imaging");
     }
     if(sendingTTL && imageStop[i] && (currentMillis > imageStop[i])) {
       sendingTTL = false;
       imageStop[i] = 0;
-      digitalWrite(VTT_OUTPUT_PIN, LOW);
+      digitalWrite(TTL_OUTPUT_PIN, LOW);
       Serial.println("Stop imaging");
     }
     if(!playingSound && soundStart && (currentMillis > soundStart)) {
