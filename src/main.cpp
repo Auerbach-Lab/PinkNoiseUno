@@ -147,20 +147,48 @@ static void sequenceHandler(uint8_t btnId, uint8_t btnState) {
   }
 }
 
+static void playSound() {
+  Serial.println("Sound playing");
+  analogWrite(AUDIO_OUTPUT_PIN, 128); //set duty cycle to 50%
+  digitalWrite(SOUND_LED_PIN, HIGH);  
+  playingSound = true;
+  soundStart = 0; //clear assignment
+}
+
+static void silenceSound() {
+  Serial.println("Sound silenced"); 
+  analogWrite(AUDIO_OUTPUT_PIN, 0); //set duty cycle to 0%
+  //0% duty cycle (surprisingly) doesn't fully silence, so a transistor is needed
+  //PNP with Ic of 700+ mA and Vebo of 3-5V, e.g. S8550 or BC327-25 
+  digitalWrite(SOUND_LED_PIN, LOW); 
+  playingSound = false;
+  soundStop = 0; //clear assignment     
+}
+
+static void startImaging(unsigned int i) {
+  Serial.println("Start imaging");
+  digitalWrite(TTL_OUTPUT_PIN, HIGH);
+  sendingTTL = true;
+  imageStart[i] = 0; //clear assignment
+}
+
+static void stopImaging(unsigned int i) {
+  Serial.println("Stop imaging");
+  digitalWrite(TTL_OUTPUT_PIN, LOW);
+  sendingTTL = false;
+  imageStop[i] = 0; //clear assignment
+}
+
 static void testHandler(uint8_t btnId, uint8_t btnState) {
   if (btnState == BTN_PRESSED) {
     Serial.println("Testing...");
-    analogWrite(AUDIO_OUTPUT_PIN, 128); //set duty cycle to 50%
-    digitalWrite(SOUND_LED_PIN, HIGH); 
-    digitalWrite(TTL_OUTPUT_PIN, HIGH);
+    playSound();
+    startImaging(0);
   } else {
     // btnState == BTN_OPEN
     Serial.println("Test stop");
-    analogWrite(AUDIO_OUTPUT_PIN, 0); //set duty cycle to 0%
-    //0% duty cycle (surprisingly) doesn't fully silence, so a transistor is needed
-    //PNP with Ic of 700+ mA and Vebo of 3-5V, e.g. S8550 or BC327-25 
-    digitalWrite(SOUND_LED_PIN, LOW);
-    digitalWrite(TTL_OUTPUT_PIN, LOW);
+    silenceSound();
+    stopImaging(0);
   }
 }
 
@@ -196,28 +224,16 @@ void loop() { // nothing here for ongoing pink noise, all driven by ISR
   currentMillis = millis();
   for (int i=0; i < sizeof imageStart / sizeof imageStart[i]; i++) {
     if(!sendingTTL && imageStart[i] && (currentMillis > imageStart[i])) {
-      sendingTTL = true;
-      imageStart[i] = 0;
-      digitalWrite(TTL_OUTPUT_PIN, HIGH);
-      Serial.println("Start imaging");
+      startImaging(i);
     }
     if(sendingTTL && imageStop[i] && (currentMillis > imageStop[i])) {
-      sendingTTL = false;
-      imageStop[i] = 0;
-      digitalWrite(TTL_OUTPUT_PIN, LOW);
-      Serial.println("Stop imaging");
+      stopImaging(i);
     }
     if(!playingSound && soundStart && (currentMillis > soundStart)) {
-      playingSound = true;
-      soundStart = 0;
-      analogWrite(AUDIO_OUTPUT_PIN, 128); //50% duty cycle
-      Serial.println("Sound playing");
+      playSound();
     }
     if(playingSound && soundStop && (currentMillis > soundStop)) {
-      playingSound = false;
-      soundStop = 0;
-      analogWrite(AUDIO_OUTPUT_PIN, 0); //0% duty cycle
-      Serial.println("Sound silenced");
+      silenceSound();
     }
   }
 
