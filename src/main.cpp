@@ -21,6 +21,37 @@
 #define TEST_BUTTON_PIN 8
 #define VTT_OUTPUT_PIN 7
 
+// EDIT THESE VALUES TO ADJUST SEQUENCE TIMING
+#define OFFSET 1000           // ms between steps in sequence
+#define IMAGE_DURATION 500    // ms duration of TTL signal for imaging
+#define SOUND_DURATION 5000   // ms duration of sound to play
+/* If the above settings are 1000/500/5000, the sequence will be:
+      0 s     sequence start button pushed
+      [offset]
+      1.0 s  pre-sound imaging starts
+      [image duration]
+      1.5 s  pre-sound imaging stops
+      [offset]
+      2.5 s  sound starts
+      [calculated time to center imaging during middle of sound playback]
+      4.75 s imaging starts
+      [image duration]
+      5.25 s imaging stops
+      7.5 s  sound stops
+      [offset]
+      8.5 s  post-sound imaging starts
+      [image duration]
+      9.0 s  post-sound imaging stops
+*/
+
+unsigned long currentMillis = 0;
+unsigned long imageStart[3] = {0};
+unsigned long imageStop[3] = {0};
+unsigned long soundStart = 0;
+unsigned long soundStop = 0;
+bool sendingTTL = false;
+bool playingSound = false;
+
 volatile byte outsampl = 0x80;  // cache last sample for ISR
 volatile byte phase = 0;  // oscillates between 0 <-> 1 for each interrupt
 volatile int error = 0;   // trick to reduce quantization noise
@@ -91,6 +122,23 @@ ISR (TIMER2_OVF_vect) {
 static void sequenceHandler(uint8_t btnId, uint8_t btnState) {
   if (btnState == BTN_PRESSED) {
     Serial.println("Pressed sequence button");
+    
+    //pre image
+    imageStart[0] = currentMillis + OFFSET;
+    imageStop[0] = imageStart[0] + IMAGE_DURATION;
+
+    //sound
+    soundStart = imageStop[0] + OFFSET;
+    soundStop = soundStart + SOUND_DURATION;
+
+    //mid-sound image
+    imageStart[1] = soundStart + (SOUND_DURATION - IMAGE_DURATION)/2;
+    imageStop[1] = imageStart[1] + IMAGE_DURATION;
+
+    //post image
+    imageStart[2] = soundStop + OFFSET;
+    imageStop[2] = imageStart[2] + IMAGE_DURATION;
+    
   } else {
     // btnState == BTN_OPEN.
     Serial.println("Released sequence button");
@@ -137,5 +185,34 @@ void setup() {
 
 void loop() { // nothing here for ongoing pink noise, all driven by ISR
   pollButtons();
+  currentMillis = millis();
+  for (int i=0; i < sizeof imageStart / sizeof imageStart[i]; i++) {
+    if(!sendingTTL && imageStart[i] && (currentMillis > imageStart[i])) {
+      sendingTTL = true;
+      imageStart[i] = 0;
+      digitalWrite(VTT_OUTPUT_PIN, HIGH);
+      Serial.println("Start imaging");
+    }
+    if(sendingTTL && imageStop[i] && (currentMillis > imageStop[i])) {
+      sendingTTL = false;
+      imageStop[i] = 0;
+      digitalWrite(VTT_OUTPUT_PIN, LOW);
+      Serial.println("Stop imaging");
+    }
+    if(!playingSound && soundStart && (currentMillis > soundStart)) {
+      playingSound = true;
+      soundStart = 0;
+      analogWrite(AUDIO_OUTPUT_PIN, 128); //50% duty cycle
+      Serial.println("Sound playing");
+    }
+    if(playingSound && soundStop && (currentMillis > soundStop)) {
+      playingSound = false;
+      soundStop = 0;
+      analogWrite(AUDIO_OUTPUT_PIN, 0); //0% duty cycle
+      Serial.println("Sound silenced");
+    }
+  }
+
+
   delay(10);
 }
