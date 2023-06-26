@@ -53,11 +53,11 @@ static void sequenceHandler(uint8_t btnId, uint8_t btnState) {
 }
 
 // define the OCR2A timer output pin, depends on which board - only support ATmega328 and ATmega1280/2560
-    #if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-    #  define AUDIO_OUTPUT_PIN 10
-    #else
-    #  define AUDIO_OUTPUT_PIN 11
-    #endif
+#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
+#  define AUDIO_OUTPUT_PIN 10
+#else
+#  define AUDIO_OUTPUT_PIN 11
+#endif
 
 // On the Uno, the relevant timer pin for audio output pin is 11, but the
 // high-frequency components of the signal bleed onto 10 and 12. Avoid them.
