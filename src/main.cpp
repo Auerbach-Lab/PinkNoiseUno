@@ -20,6 +20,8 @@
 #define SEQUENCE_BUTTON_PIN 9
 #define TEST_BUTTON_PIN 8
 #define TTL_OUTPUT_PIN 7
+#define SOUND_LED_PIN 6
+#define TRANSISTOR_PIN 5
 
 // EDIT THESE VALUES TO ADJUST SEQUENCE TIMING
 #define OFFSET 1000           // ms between steps in sequence
@@ -149,11 +151,15 @@ static void testHandler(uint8_t btnId, uint8_t btnState) {
   if (btnState == BTN_PRESSED) {
     Serial.println("Testing...");
     analogWrite(AUDIO_OUTPUT_PIN, 128); //set duty cycle to 50%
+    digitalWrite(SOUND_LED_PIN, HIGH); 
     digitalWrite(TTL_OUTPUT_PIN, HIGH);
   } else {
     // btnState == BTN_OPEN
     Serial.println("Test stop");
     analogWrite(AUDIO_OUTPUT_PIN, 0); //set duty cycle to 0%
+    //0% duty cycle (surprisingly) doesn't fully silence, so a transistor is needed
+    //PNP with Ic of 700+ mA and Vebo of 3-5V, e.g. S8550 or BC327-25 
+    digitalWrite(SOUND_LED_PIN, LOW);
     digitalWrite(TTL_OUTPUT_PIN, LOW);
   }
 }
@@ -175,6 +181,8 @@ void setup() {
   pinMode(SEQUENCE_BUTTON_PIN, INPUT_PULLUP);
   pinMode(TEST_BUTTON_PIN, INPUT_PULLUP);
   pinMode(TTL_OUTPUT_PIN, OUTPUT);
+  pinMode(SOUND_LED_PIN, OUTPUT);
+  pinMode(TRANSISTOR_PIN, INPUT); //we just want it sinking current, usually
 
   build_revtab();
   //analogWrite(AUDIO_OUTPUT_PIN, 128);  // enable the output pin and its timer, set to 50%
