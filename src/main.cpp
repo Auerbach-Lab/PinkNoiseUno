@@ -27,7 +27,7 @@ unsigned long soundStop = 0;
 bool sendingTTL = false;
 bool playingSound = false;
 static void sequenceHandler(uint8_t btnId, uint8_t btnState) {
-  if (btnState == BTN_PRESSED) {
+  if ((btnState == BTN_PRESSED) && !imageStop[i]) {
     Serial.println("Pressed sequence button");
     
     //pre image
