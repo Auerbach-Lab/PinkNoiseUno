@@ -27,7 +27,7 @@ unsigned long soundStop = 0;
 bool sendingTTL = false;
 bool playingSound = false;
 static void sequenceHandler(uint8_t btnId, uint8_t btnState) {
-  if ((btnState == BTN_PRESSED) && !imageStop[i]) {
+  if ((btnState == BTN_PRESSED) && !imageStop[2]) {
     Serial.println("Pressed sequence button");
     
     //pre image
@@ -61,16 +61,17 @@ static void sequenceHandler(uint8_t btnId, uint8_t btnState) {
 
 // On the Uno, the relevant timer pin for audio output pin is 11, but the
 // high-frequency components of the signal bleed onto 10 and 12. Avoid them.
-#define SEQUENCE_BUTTON_PIN 9
-#define TEST_BUTTON_PIN 8
+#define SEQUENCE_BUTTON_PIN 4
+#define TEST_BUTTON_PIN 3
 #define TTL_OUTPUT_PIN 7
 #define SOUND_LED_PIN 6
 #define TRANSISTOR_PIN 5
 
 static void playSound() {
   Serial.println("Sound playing");
-  analogWrite(AUDIO_OUTPUT_PIN, 128); //set duty cycle to 50%
-  digitalWrite(SOUND_LED_PIN, HIGH);  
+  analogWrite(AUDIO_OUTPUT_PIN, 255); //set duty cycle to 100%
+  digitalWrite(SOUND_LED_PIN, HIGH);
+  digitalWrite(TRANSISTOR_PIN, LOW);
   playingSound = true;
   soundStart = 0; //clear assignment
 }
@@ -81,6 +82,7 @@ static void silenceSound() {
   //0% duty cycle (surprisingly) doesn't fully silence, so a transistor is needed
   //PNP with Ic of 700+ mA and Vebo of 3-5V, e.g. S8550 or BC327-25 
   digitalWrite(SOUND_LED_PIN, LOW); 
+  digitalWrite(TRANSISTOR_PIN, HIGH);
   playingSound = false;
   soundStop = 0; //clear assignment     
 }
@@ -203,7 +205,8 @@ void setup() {
   pinMode(TEST_BUTTON_PIN, INPUT_PULLUP);
   pinMode(TTL_OUTPUT_PIN, OUTPUT);
   pinMode(SOUND_LED_PIN, OUTPUT);
-  pinMode(TRANSISTOR_PIN, INPUT); //we just want it sinking current, usually
+  pinMode(TRANSISTOR_PIN, OUTPUT);
+  digitalWrite(TRANSISTOR_PIN, HIGH);
 
   build_revtab();
   //analogWrite(AUDIO_OUTPUT_PIN, 128);  // enable the output pin and its timer, set to 50%
@@ -215,7 +218,7 @@ void setup() {
 void loop() { // nothing here for ongoing pink noise, all driven by ISR
   pollButtons();
   currentMillis = millis();
-  for (int i=0; i < sizeof imageStart / sizeof imageStart[i]; i++) {
+  for (unsigned int i=0; i < sizeof imageStart / sizeof imageStart[i]; i++) {
     if(!sendingTTL && imageStart[i] && (currentMillis > imageStart[i])) {
       startImaging(i);
     }
