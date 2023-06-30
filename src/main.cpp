@@ -65,34 +65,29 @@ static void sequenceHandler(uint8_t btnId, uint8_t btnState) {
 #define TEST_BUTTON_PIN 3
 #define TTL_OUTPUT_PIN 7
 #define SOUND_GATE_PIN 6
-#define TRANSISTOR_PIN 5
+#define TRANSISTOR_PIN 9
 
-#define COSINE_PERIOD 2048 //must be a power of 2
-#include "costable.h"
+//#include "costable.h // Cosine volume fade is not possible with PWM (vs analog control of voltage) to a transistor
 
 static void playSound() {
   Serial.println("Sound playing");
-  //analogWrite(AUDIO_OUTPUT_PIN, 1); //1 is slightly louder than 5, 128 and 192 are the same as each other, 255 is very quiet, weird
-  //digitalWrite(SOUND_GATE_PIN, HIGH);
-  digitalWrite(TRANSISTOR_PIN, LOW);
+  analogWrite(AUDIO_OUTPUT_PIN, 128); 
+  digitalWrite(SOUND_GATE_PIN, HIGH);;
   playingSound = true;
   soundStart = 0; //clear assignment
 }
 
 static void silenceSound() {
   Serial.println("Sound silenced"); 
-  //analogWrite(AUDIO_OUTPUT_PIN, 0); //set duty cycle to 0%
-  //0% duty cycle (surprisingly) doesn't fully silence, so a transistor is needed
-  //PNP with Ic of 700+ mA and Vebo of 3-5V, e.g. S8550 or BC327-25 
-  //digitalWrite(SOUND_GATE_PIN, LOW); 
-  digitalWrite(TRANSISTOR_PIN, HIGH);
+  analogWrite(AUDIO_OUTPUT_PIN, 0); //set duty cycle to 0% but doesn't fully silence, so a transistor/mosfet is needed
+  digitalWrite(SOUND_GATE_PIN, LOW); 
   playingSound = false;
   soundStop = 0; //clear assignment     
 }
 
 static void startImaging(unsigned int i) {
   Serial.println("Start imaging");
-  //digitalWrite(TTL_OUTPUT_PIN, HIGH);
+  digitalWrite(TTL_OUTPUT_PIN, HIGH);
   sendingTTL = true;
   imageStart[i] = 0; //clear assignment
 }
@@ -213,29 +208,21 @@ void setup() {
   pinMode(TEST_BUTTON_PIN, INPUT_PULLUP);
   pinMode(TTL_OUTPUT_PIN, OUTPUT);
   pinMode(SOUND_GATE_PIN, OUTPUT);
-  pinMode(TRANSISTOR_PIN, OUTPUT);
-
-  analogWrite(AUDIO_OUTPUT_PIN, 1); // enable the output pin and its timer, set to 0%
+  analogWrite(AUDIO_OUTPUT_PIN, 128); // enable the output pin and its timer, set to 50% which is loudest
   digitalWrite(SOUND_GATE_PIN, HIGH);
-  analogWrite(TRANSISTOR_PIN, 128);
+  
 }
 
 void loop() { // nothing here for ongoing pink noise, all driven by ISR
   pollButtons();
   currentMillis = millis();
   
-  //this should make volume go up and down in a 2s period, yes?
-  uint8_t i = 256.0 * currentMillis / COSINE_PERIOD; //don't need currentMillis % COSINE_PERIOD since we're just casting down to a byte, we get the LSDs that way.
-  uint8_t level = pgm_read_word_near(cosTable + i);
-  Serial.println(level);
-  //analogWrite(TRANSISTOR_PIN, level);
-  
-  for (i=0; i < sizeof imageStart / sizeof imageStart[i]; i++) {
+  for (unsigned int i=0; i < sizeof imageStart / sizeof imageStart[i]; i++) {
     if(!sendingTTL && imageStart[i] && (currentMillis > imageStart[i])) startImaging(i);
     if(sendingTTL && imageStop[i] && (currentMillis > imageStop[i])) stopImaging(i);
     if(!playingSound && soundStart && (currentMillis > soundStart)) playSound();
     if(playingSound && soundStop && (currentMillis > soundStop)) silenceSound();
   }
 
-  delay(50);
+  delay(10);
 }
