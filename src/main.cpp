@@ -64,7 +64,7 @@ static void sequenceHandler(uint8_t btnId, uint8_t btnState) {
 #define SEQUENCE_BUTTON_PIN 4
 #define TEST_BUTTON_PIN 3
 #define TTL_OUTPUT_PIN 7
-#define SOUND_GATE_PIN 6
+#define SOUND_GATE_PIN 2 //pin 6 is blown or high resistance or something
 #define TRANSISTOR_PIN 9
 
 //#include "costable.h // Cosine volume fade is not possible with PWM (vs analog control of voltage) to a transistor
